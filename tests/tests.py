@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 import sys
 try:
     from urllib.parse import urlencode
@@ -10,10 +10,12 @@ from django.conf import settings
 from django.contrib import auth
 from django.contrib.auth.models import User
 from django.contrib.sessions.backends.base import CreateError
+from django.core.management import call_command
 from django.core.urlresolvers import reverse
 from django.db import IntegrityError
 from django.test import TestCase
 from django.test.utils import override_settings
+from django.utils import six
 from django.utils.timezone import now
 
 from user_sessions.backends.db import SessionStore
@@ -78,7 +80,7 @@ class ViewsTest(TestCase):
     client_class = Client
 
     def setUp(self):
-        User.objects.create_user('bouke', '', 'secret')
+        self.user = User.objects.create_user('bouke', '', 'secret')
         assert self.client.login(username='bouke', password='secret')
 
     def test_list(self):
@@ -91,6 +93,13 @@ class ViewsTest(TestCase):
         response = self.client.post(reverse('user_sessions:session_delete',
                                             args=[session_key]))
         self.assertRedirects(response, reverse('user_sessions:session_list'))
+
+    def test_delete_other(self):
+        self.user.session_set.create(ip='127.0.0.1', expire_date=datetime.now() + timedelta(days=1))
+        self.assertEqual(self.user.session_set.count(), 2)
+        response = self.client.post(reverse('user_sessions:session_delete_other'))
+        self.assertRedirects(response, reverse('user_sessions:session_list'))
+        self.assertEqual(self.user.session_set.count(), 1)
 
 
 class AdminTest(TestCase):
@@ -204,7 +213,8 @@ class SessionStoreTest(TestCase):
 
     def test_integrity(self):
         self.store.user_agent = None
-        with self.assertRaisesRegexp(
+        with six.assertRaisesRegex(
+                self,
                 IntegrityError,
                 '(user_sessions_session.user_agent may not be NULL|'
                 'NOT NULL constraint failed: user_sessions_session.user_agent)'
@@ -298,7 +308,7 @@ class LocationTemplateFilterTest(TestCase):
 
     @skipUnless(geoip, geoip_msg)
     def test_locations(self):
-        self.assertEqual(location('8.8.8.8'), 'United States')
+        self.assertEqual(location('8.8.8.8'), 'Mountain View, United States')
         self.assertEqual(location('44.55.66.77'), 'San Diego, United States')
 
 
@@ -375,3 +385,12 @@ class DeviceTemplateFilterTest(TestCase):
             device('Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 ('
                    'KHTML, like Gecko) Chrome/30.0.1599.101 Safari/537.36')
         )
+
+
+@skipUnless(django.VERSION >= (1, 5), "Django 1.5 and higher")
+class ClearsessionsCommandTest(TestCase):
+    def test_can_call(self):
+        Session.objects.create(expire_date=datetime.now() - timedelta(days=1),
+                               ip='127.0.0.1')
+        call_command('clearsessions')
+        self.assertEqual(Session.objects.count(), 0)

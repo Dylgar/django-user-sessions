@@ -24,8 +24,8 @@ contains the package `django-two-factor-auth`_, but that application is not a
 dependency for this package. Also have a look at the bundled example templates
 and views to see how you can integrate the application into your project.
 
-Compatible with Django 1.4, 1.5, 1.6 and 1.7 on Python 2.6, 2.7, 3.2, 3.3 and
-3.4. Documentation is available at `readthedocs.org`_.
+Compatible with Django 1.8 and 1.9 on Python 2.7, 3.2, 3.3, 3.4 and 3.5.
+Documentation is available at `readthedocs.org`_.
 
 
 Features
@@ -69,12 +69,52 @@ You need to setup GeoIP for the location detection to work. See the Django
 documentation on `installing GeoIP`_.
 
 
-Contribute
-==========
+Getting help
+============
+
+For general questions regarding this package, please hop over to Stack 
+Overflow. If you think there is an issue with this package; check if the
+issue is already listed (either open or closed), and file an issue if
+it's not.
+
+
+Development
+===========
+
+How to contribute
+-----------------
 * Fork the repository on GitHub and start hacking.
 * Run the tests.
 * Send a pull request with your changes.
 * Provide a translation using Transifex_.
+
+Running tests
+-------------
+This project aims for full code-coverage, this means that your code should be
+well-tested. Also test branches for hardened code. You can run the full test
+suite with::
+
+    make test
+
+Or run a specific test with::
+
+    make test TARGET=tests.tests.MiddlewareTest
+
+For Python compatibility, tox_ is used. You can run the full test suite with::
+
+    tox
+
+Releasing
+---------
+The following actions are required to push a new version::
+
+    python example/manage.py makemigrations two_factor
+    git commit -am "Added migrations"
+
+    bumpversion [major|minor|patch]
+    git commit -am "Released [version]"
+    git tag [version]
+    python setup.py sdist bdist_wheel upload
 
 
 License
@@ -89,3 +129,4 @@ This project is licensed under the MIT license.
 .. _`django-two-factor-auth`: https://github.com/Bouke/django-two-factor-auth
 .. _installing GeoIP:
    https://docs.djangoproject.com/en/1.6/ref/contrib/gis/geoip/
+.. _tox: https://testrun.org/tox/latest/
